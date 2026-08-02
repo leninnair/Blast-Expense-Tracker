@@ -136,7 +136,7 @@ class ExpenseTracker(ctk.CTk):
         self.build_ui()
         self.protocol("WM_DELETE_WINDOW", self.close_app)
     
-    def build_ui(self):
+    def build_ui(self): # Creates various UI elements via functions.
         # Configuring columns and rows
         self.columnconfigure(0, weight=0, minsize=300)
         self.columnconfigure(1, weight=10)
@@ -149,7 +149,7 @@ class ExpenseTracker(ctk.CTk):
         self.build_form()
         self.build_summary()
     
-    def build_sidebar(self):
+    def build_sidebar(self): # Creates the sidebar with buttons.
         self.sidebar = ctk.CTkFrame(self,
                                     corner_radius=0,
                                     fg_color="#6c2c77",
@@ -157,13 +157,13 @@ class ExpenseTracker(ctk.CTk):
                                     )
         # Sidebar column and row configuration
         self.sidebar.columnconfigure(0, weight=1)
-        self.sidebar.rowconfigure((0,1,2), weight=1)
-        self.sidebar.rowconfigure((3,4), weight=8)
+        self.sidebar.rowconfigure((0,1,2,3,4,5), weight=1)
+        self.sidebar.rowconfigure((6,7), weight=8)
 
         self.sidebar.grid(row=1, column=0, sticky="nesw")
         self.build_sidebar_buttons()
         self.build_currency_picker()  
-    def build_sidebar_buttons(self):
+    def build_sidebar_buttons(self): # Creates the buttons on the sidebar.
         ctk.CTkButton(self.sidebar, 
                       corner_radius=0,
                       font=("Segoe UI Bold", 20),
@@ -189,6 +189,39 @@ class ExpenseTracker(ctk.CTk):
                       cursor="hand2",
                       text="Add Transaction", command=lambda: self.raise_frame(self.trans_form)
                       ).grid(row=2, column=0, sticky="nsew")
+
+        ctk.CTkLabel(self.sidebar, 
+                             text="FROM",
+                             font=("Segoe UI Bold", 14),
+                             ).grid(row=3, column=0, sticky="nw", padx=10, pady=(10,0))
+        
+        self.from_date = ctk.StringVar() # Sets month start as the default.
+        self.from_dt = CTkDateEntry(self.sidebar, corner_radius=0, bg_color="#6c2c77", 
+                                    fg_color="#873795", text_color="#ffffff",
+                                    font=("Helvetica", 14, "bold"), width=120, variable=self.from_date)
+        self.from_dt.grid(row=4, column=0, sticky="nw", padx=10)
+
+        ctk.CTkLabel(self.sidebar, 
+                        text="TO",
+                        font=("Segoe UI Bold", 14),
+                        ).grid(row=3, column=0, sticky="ne", padx=10, pady=(10,0))
+        
+        self.to_date = ctk.StringVar() # sets month end as default.
+        self.to_dt = CTkDateEntry(self.sidebar, corner_radius=0, bg_color="#6c2c77", 
+                                  fg_color="#873795", text_color="#ffffff",
+                                    font=("Helvetica", 14, "bold"), width=120, variable=self.to_date)
+        self.to_dt.grid(row=4, column=0, sticky="ne", padx=10)
+
+        ctk.CTkButton(self.sidebar,  
+                      corner_radius=10,
+                      font=("Segoe UI Bold", 20),
+                      fg_color="#793286",
+                      hover_color="#873795",
+                      border_color="#792A87",
+                      cursor="hand2",
+                      text="Update", command=self.build_expense_table
+                      ).grid(row=5, column=0)
+        
 # Helps pick a currency or change it.
     def build_currency_picker(self):
         currency = self.expenses.get_currency()
@@ -196,7 +229,7 @@ class ExpenseTracker(ctk.CTk):
         ctk.CTkLabel(self.sidebar, 
                      text="Select Currency",
                      font=("Segoe UI Bold", 20),
-                     ).grid(row=3, column=0, sticky="esw", pady=(50, 20))
+                     ).grid(row=6, column=0, sticky="esw", pady=(50, 20))
         self.cur_option = ctk.CTkOptionMenu( # The option menu that displays currency selection.
             self.sidebar,
             values=["INR", "USD", "EUR", "GBP", "JPY", "CAD", "AUD"],
@@ -215,7 +248,7 @@ class ExpenseTracker(ctk.CTk):
             text_color="white",
             command=self.change_currency
         )
-        self.cur_option.grid(row=4, column=0, sticky="new", padx=(10,10))
+        self.cur_option.grid(row=7, column=0, sticky="new", padx=(10,10))
 
 # Shows the list of expenses taken from the database, for the month by default, on clicking the "Transactions" button.
     def build_expense_table(self):
@@ -224,12 +257,26 @@ class ExpenseTracker(ctk.CTk):
         self.main = ctk.CTkScrollableFrame(self, 
                         corner_radius=0)
         self.main.columnconfigure(0, weight=1)
-        #self.main.rowconfigure(tuple(range(20)), weight=1)
 
         self.set_table_labels() # Creates the labels at the top of the expense table.
 
-        for idx, expense in enumerate(self.expenses.data_generator()):
-            if idx % 2 == 0:
+        try:
+            from_date = datetime.strptime(self.from_date.get(), r"%d/%m/%Y").date().isoformat()
+        except Exception:
+            from_date = self.expenses.default_start
+            self.from_date.set(from_date)
+        try:
+            to_date = datetime.strptime(self.to_date.get(), r"%d/%m/%Y").date().isoformat()
+        except Exception:
+            to_date = self.expenses.default_end
+            self.to_date.set(to_date)
+        
+        print(from_date)
+        print(to_date)
+
+# from_date and to_date by default contains month start and end. 
+        for idx, expense in enumerate(self.expenses.data_generator(start=from_date, end=to_date)):
+            if idx % 2 == 0: # The background is alternated between two colors.
                 background = "#ffffff"
             else:
                 background = "#ebebeb"
@@ -244,9 +291,7 @@ class ExpenseTracker(ctk.CTk):
             expense_frame.columnconfigure(3, weight=5, uniform="contentgrid")
 
             expense_frame.grid(row=idx+1, column=0, sticky="nsew")
-
-            
-            
+                   
             ctk.CTkLabel(expense_frame, corner_radius=0, bg_color="transparent", # date value
                          text=expense[0], text_color="#1f1f1f",
                          font=("Segoe UI", 18)).grid(row=0, column=0, sticky="w", ipadx=10)
@@ -258,7 +303,6 @@ class ExpenseTracker(ctk.CTk):
             cat_box.configure(state="readonly")
             cat_box.grid(row=0, column=1, sticky="ew")
 
-
             f_amount = f"{self.currency} {float(expense[3]):,.2f}" # Formats the amount (expense[3]) to have 2 decimalpts
 
             # amt_box displays the amount.
@@ -268,7 +312,6 @@ class ExpenseTracker(ctk.CTk):
             amt_box.insert(0, f_amount)
             amt_box.configure(state="readonly")
             amt_box.grid(row=0, column=2, sticky="ew")
-
 
             desc_box = ctk.CTkTextbox(expense_frame, bg_color="transparent", height=60,
                                       fg_color="transparent", corner_radius=0, text_color="#333333",                                    
@@ -310,7 +353,7 @@ class ExpenseTracker(ctk.CTk):
                             column=3, rowspan=2,
                             sticky="w", ipady=20)
 
-# Shows the summary on clicking the "Summary" button. Displayed by default while opening app.
+# Shows the summary of transactions. Displayed by default while opening app.
     def build_summary(self):
         if hasattr(self, "s_frame") and self.s_frame.winfo_exists():
             self.s_frame.destroy()
@@ -383,10 +426,10 @@ class ExpenseTracker(ctk.CTk):
                 frame.grid_remove()
         theframe.grid()
            
-    def close_app(self):
+    def close_app(self): # Custom function called to close the app. Helps close the database.
         self.expenses.db.close()
         self.destroy()
         
-if __name__ == "__main__":
+if __name__ == "__main__": 
     tracker = ExpenseTracker()
     tracker.mainloop()
