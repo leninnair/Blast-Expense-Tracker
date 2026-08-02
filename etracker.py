@@ -8,7 +8,7 @@ from expenseDB import Expenses
 from PIL import Image
 
 
-class Trans_Form(ctk.CTkFrame):
+class Trans_Form(ctk.CTkFrame): # Transaction form class. 
     def __init__(self, parent:ctk.widget):
         super().__init__(master=parent)
         self.master = parent
@@ -109,9 +109,9 @@ class Trans_Form(ctk.CTkFrame):
         self.master.build_summary()
         self.reset_form()
      
-    def cancel_trans(self):
+    def cancel_trans(self): # Resets form and shows summary.
         self.reset_form()
-        self.master.raise_summary()
+        self.master.raise_frame(self.master.s_frame)
 
 # Resets the form to default values.
     def reset_form(self):
@@ -148,6 +148,7 @@ class ExpenseTracker(ctk.CTk):
         self.build_expense_table()
         self.build_form()
         self.build_summary()
+        self.raise_frame(self.s_frame)
     
     def build_sidebar(self): # Creates the sidebar with buttons.
         self.sidebar = ctk.CTkFrame(self,
@@ -157,8 +158,9 @@ class ExpenseTracker(ctk.CTk):
                                     )
         # Sidebar column and row configuration
         self.sidebar.columnconfigure(0, weight=1)
-        self.sidebar.rowconfigure((0,1,2,3,4,5), weight=1)
-        self.sidebar.rowconfigure((6,7), weight=8)
+        self.sidebar.rowconfigure((0,1,2), weight=1)
+        self.sidebar.rowconfigure(3, weight=1, minsize=150) # Sets minimum height for date pickers.
+        self.sidebar.rowconfigure((4,5), weight=8)
 
         self.sidebar.grid(row=1, column=0, sticky="nesw")
         self.build_sidebar_buttons()
@@ -190,29 +192,36 @@ class ExpenseTracker(ctk.CTk):
                       text="Add Transaction", command=lambda: self.raise_frame(self.trans_form)
                       ).grid(row=2, column=0, sticky="nsew")
 
-        ctk.CTkLabel(self.sidebar, 
+        self.filter_frame = ctk.CTkFrame(self.sidebar, bg_color="transparent", fg_color="transparent")
+        self.filter_frame.grid(row=3, column=0, sticky = "nsew")
+        self.filter_frame.rowconfigure((0,1,2), weight=1)
+        self.filter_frame.columnconfigure(0, weight=1)
+        ctk.CTkLabel(self.filter_frame, 
                              text="FROM",
                              font=("Segoe UI Bold", 14),
-                             ).grid(row=3, column=0, sticky="nw", padx=10, pady=(10,0))
+                             ).grid(row=0, column=0, sticky="sw", padx=10, pady=(10,0))
         
         self.from_date = ctk.StringVar() # Sets month start as the default.
-        self.from_dt = CTkDateEntry(self.sidebar, corner_radius=0, bg_color="#6c2c77", 
-                                    fg_color="#873795", text_color="#ffffff",
+        self.ftrace_id = self.from_date.trace_add("write", lambda *args: self.format_date(self.from_date, self.from_fld, "from"))
+        self.from_fld = CTkDateEntry(self.filter_frame, corner_radius=0, bg_color="#6c2c77", 
+                                    fg_color="#873795", text_color="#ffffff", state="readonly",
                                     font=("Helvetica", 14, "bold"), width=120, variable=self.from_date)
-        self.from_dt.grid(row=4, column=0, sticky="nw", padx=10)
+        self.from_fld.grid(row=1, column=0, sticky="nw", padx=10)
 
-        ctk.CTkLabel(self.sidebar, 
+        ctk.CTkLabel(self.filter_frame, 
                         text="TO",
                         font=("Segoe UI Bold", 14),
-                        ).grid(row=3, column=0, sticky="ne", padx=10, pady=(10,0))
+                        ).grid(row=0, column=0, sticky="se", padx=10, pady=(10,0))
         
         self.to_date = ctk.StringVar() # sets month end as default.
-        self.to_dt = CTkDateEntry(self.sidebar, corner_radius=0, bg_color="#6c2c77", 
-                                  fg_color="#873795", text_color="#ffffff",
-                                    font=("Helvetica", 14, "bold"), width=120, variable=self.to_date)
-        self.to_dt.grid(row=4, column=0, sticky="ne", padx=10)
+        self.ttrace_id = self.to_date.trace_add("write", lambda *args: self.format_date(self.to_date, self.to_fld, "to"))
+        self.to_fld = CTkDateEntry(self.filter_frame, corner_radius=0, bg_color="#6c2c77", 
+                                  fg_color="#873795", text_color="#ffffff", state="readonly",
+                                    font=("Helvetica", 14, "bold"), width=120, variable=self.to_date
+                                    )
+        self.to_fld.grid(row=1, column=0, sticky="ne", padx=10)
 
-        ctk.CTkButton(self.sidebar,  
+        ctk.CTkButton(self.filter_frame,  
                       corner_radius=10,
                       font=("Segoe UI Bold", 20),
                       fg_color="#793286",
@@ -220,8 +229,27 @@ class ExpenseTracker(ctk.CTk):
                       border_color="#792A87",
                       cursor="hand2",
                       text="Update", command=self.build_expense_table
-                      ).grid(row=5, column=0)
-        
+                      ).grid(row=2, column=0)
+        self.filter_frame.grid_remove()
+
+    def format_date(self, date:ctk.StringVar, picker:CTkDateEntry, key: str, *args):
+        if key == "from":
+            trace_id = self.ftrace_id
+        else:
+            trace_id = self.ttrace_id
+
+        date.trace_remove("write", trace_id)
+        picker.entry.configure(state="normal")
+        picker.entry.set(datetime.strptime(date.get(), r"%d/%m/%Y").date().isoformat())
+        picker.entry.configure(state="readonly")
+
+        trace_id = date.trace_add("write", lambda *args: self.format_date(date, picker, key))
+
+        if key == "from":
+            self.ftrace_id = trace_id
+        else:
+            self.ttrace_id = trace_id
+
 # Helps pick a currency or change it.
     def build_currency_picker(self):
         currency = self.expenses.get_currency()
@@ -229,7 +257,7 @@ class ExpenseTracker(ctk.CTk):
         ctk.CTkLabel(self.sidebar, 
                      text="Select Currency",
                      font=("Segoe UI Bold", 20),
-                     ).grid(row=6, column=0, sticky="esw", pady=(50, 20))
+                     ).grid(row=4, column=0, sticky="esw", pady=(50, 20))
         self.cur_option = ctk.CTkOptionMenu( # The option menu that displays currency selection.
             self.sidebar,
             values=["INR", "USD", "EUR", "GBP", "JPY", "CAD", "AUD"],
@@ -248,7 +276,7 @@ class ExpenseTracker(ctk.CTk):
             text_color="white",
             command=self.change_currency
         )
-        self.cur_option.grid(row=7, column=0, sticky="new", padx=(10,10))
+        self.cur_option.grid(row=5, column=0, sticky="new", padx=(10,10))
 
 # Shows the list of expenses taken from the database, for the month by default, on clicking the "Transactions" button.
     def build_expense_table(self):
@@ -260,19 +288,8 @@ class ExpenseTracker(ctk.CTk):
 
         self.set_table_labels() # Creates the labels at the top of the expense table.
 
-        try:
-            from_date = datetime.strptime(self.from_date.get(), r"%d/%m/%Y").date().isoformat()
-        except Exception:
-            from_date = self.expenses.default_start
-            self.from_date.set(from_date)
-        try:
-            to_date = datetime.strptime(self.to_date.get(), r"%d/%m/%Y").date().isoformat()
-        except Exception:
-            to_date = self.expenses.default_end
-            self.to_date.set(to_date)
-        
-        print(from_date)
-        print(to_date)
+        from_date = self.from_date.get()
+        to_date = self.to_date.get()
 
 # from_date and to_date by default contains month start and end. 
         for idx, expense in enumerate(self.expenses.data_generator(start=from_date, end=to_date)):
@@ -322,6 +339,7 @@ class ExpenseTracker(ctk.CTk):
 
         self.main.grid(row=1, column=1, sticky="nsew") # Displays the main content/table.
         self.main.focus_set()
+        self.filter_frame.grid()
 
 # Creates the top table labels of the transaction list table.        
     def set_table_labels(self):
@@ -365,8 +383,9 @@ class ExpenseTracker(ctk.CTk):
         self.summary = self.expenses.summary_generator() # Refreshes summary every time new data is added.
         bal = self.summary["Balance"] # Naming variable for ease of use in label below.
 
+# Styled summary box displays contents in green or red based on balance amount.
         self.summary_box = ctk.CTkFrame(self.s_frame, bg_color="transparent", 
-            fg_color="#007a2b" if bal > 0 else "#871f1f", corner_radius=20)
+            fg_color="#007a2b" if bal >= 0 else "#871f1f", corner_radius=20)
         self.summary_box.columnconfigure((0), weight=1)
         self.summary_box.rowconfigure((0,1,2), weight=1)
         self.summary_box.grid(row=0, column=0, pady=(20, 50))
@@ -420,10 +439,13 @@ class ExpenseTracker(ctk.CTk):
 # This raise function simply raises the corresponding frame to the top for quick display.
 # Real update happens only when user adds or edits a transaction.
     def raise_frame(self, theframe):
-        frames = [self.s_frame, self.trans_form, self.main]
+        frames = [self.s_frame, self.trans_form, self.main, self.filter_frame]
+        
         for frame in frames:
             if frame != theframe:
                 frame.grid_remove()
+        if theframe == self.main:
+            self.filter_frame.grid()
         theframe.grid()
            
     def close_app(self): # Custom function called to close the app. Helps close the database.
