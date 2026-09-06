@@ -53,25 +53,50 @@ class Expenses:
         self.db.commit()
 
     def data_generator(self, start=None, end=None):
-        if start is None:
+        if not start:
             start = self.default_start
-        if end is None:
+        if not end:
             end = self.default_end
         self.cursor.execute("""
-            SELECT trans_date, trans_type, category, amount, description 
+            SELECT id, trans_date, trans_type, category, amount, description 
             FROM transactions 
             WHERE trans_date >= ? 
             AND trans_date <= ?
             ORDER BY trans_date""", (start, end))
         yield from self.cursor
-    
+
+    def get_transaction(self, id): # Gets the transaction details for a specific transaction with its id.
+        return self.cursor.execute("""
+            SELECT * FROM transactions WHERE id = ?
+        """, (id,)).fetchone()
+
     def save_transaction(self, transaction): #transaction is a tuple sent from Trans_Form
         self.cursor.execute("""
             INSERT INTO transactions (trans_date, trans_type, category, amount,
                             description) VALUES (?, ?, ?, ?, ?)""", 
                             transaction)
         self.db.commit()
-                    
+
+    def update_transaction(self, transaction):
+        self.cursor.execute("""
+            UPDATE transactions SET
+            trans_date = ?,
+            trans_type = ?,
+            category = ?,
+            amount = ?, 
+            description = ?
+            WHERE id = ?
+            """, transaction                        
+            )
+        self.db.commit()
+
+    # Delete the transaction, especially when invoked from the delete button on the tracker.
+    def del_transaction(self, id):
+        self.cursor.execute("""
+            DELETE FROM transactions WHERE id = ?
+            """, (id,))
+        self.db.commit()
+                         
     def summary_generator(self, start=None, end=None):
         summary = {}
         summary["Balance"], summary["Expense"], summary["Income"] = 0,0,0
