@@ -96,7 +96,6 @@ class Trans_Form(ctk.CTkFrame): # Transaction form class.
             else:
                 self.cancel_trans()
                 return 
-        #date = datetime.strptime(date, r"%d/%m/%Y").date().isoformat()
         if not category:
             warning = CTkMessagebox(title="Invalid category", message="Please input category correctly.", icon="warning"
                             , option_1="Retry", option_2="Cancel")
@@ -522,5 +521,5 @@ class ExpenseTracker(ctk.CTk):
         self.destroy()
         
 if __name__ == "__main__": 
-    tracker = ExpenseTracker()
-    tracker.mainloop()
+    etracker = ExpenseTracker()
+    etracker.mainloop()
