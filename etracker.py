@@ -494,15 +494,15 @@ class ExpenseTracker(ctk.CTk):
     def csymbol(option:str): # Returns the symbol associated with currency string.
         symbols = {
             "INR": "₹", "USD": "$", "GBP": "£", "EUR": "€", 
-            "JPY": "¥", "CNY": "¥", "AUD": "$", "CAD": "$",
+            "JPY": "¥", "CNY": "¥", "AUD": "A$", "CAD": "C$",
         }
         return symbols[option] # Returns the symbol associated with the currency string.
     
     def change_currency(self, option: str): #Changes the currency and alerts the user.
         self.currency = self.csymbol(option) #Gets the new currency symbol
-        CTkMessagebox(self, message="Currency updated.", title="Currency")
-        self.build_ui() # Rebuilds UI immediately with the new currency symbol.
         self.expenses.set_currency(option) # Changes the currency in the database.
+        self.build_ui() # Rebuilds UI immediately with the new currency symbol.
+        CTkMessagebox(self, message="Currency updated.", title="Currency")
 
 # This raise function simply raises the corresponding frame to the top for quick display.
 # Real update happens only when user adds or edits a transaction.
